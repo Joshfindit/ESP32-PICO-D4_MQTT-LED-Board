@@ -1,0 +1,5 @@
+# ESP binaries
+build/
+
+# Nano SWP files
+*.swp
