@@ -5,6 +5,8 @@
 #include <nvs_flash.h>
 #include <freertos/event_groups.h>
 #include <MQTTClient.h>
+#include <driver/ledc.h>
+#include <soc/ledc_struct.h>
 
 // logging constants
 #define LOG_TAG "MQTT_LED"
@@ -14,16 +16,34 @@
 
 // mqtt constants
 #define MQTT_HOST                 "192.168.7.20"
-#define MQTT_PORT                 1883
+#define MQTT_PORT                 (1883)
 #define MQTT_ID                   "ESP32d8a01d4018b4"
 #define MQTT_USERNAME             "USERNAME"
 #define MQTT_PASSWORD             "PASSWORD"
 #define MQTT_TOPIC(relative_name) MQTT_ID "/" relative_name
 
+// led constants
+#define LED_DUTY_RESOLUTION LEDC_TIMER_10_BIT
+#define LED_DUTY_MIN        (0)
+#define LED_DUTY_MAX        (1023)
+#define LED_MODE            LEDC_HIGH_SPEED_MODE
+#define LED_TIMER           LEDC_TIMER_0
+#define LED_CHANNEL         LEDC_CHANNEL_0
+#define LED_GPIO            (18)
+
 struct wifi_state_t
 {
 	EventGroupHandle_t event_group;
 };
+
+enum led_state_t
+{
+	LED_STATE_ON,
+	LED_STATE_OFF,
+};
+
+// the current led state for this program
+enum led_state_t led_state = LED_STATE_OFF;
 
 // out should be of size data->message->payloadlen + 1
 void mqtt_get_payload(MessageData *data, char *out)
@@ -37,14 +57,72 @@ void mqtt_get_payload(MessageData *data, char *out)
 	strcpy(out, payload);
 }
 
-void mqtt_light_handler(MessageData *data)
+void led_fade_duty(uint32_t duty)
+{
+	// stop any current fade
+	// todo: ledc_get_duty seems to get the target duty of the current fade
+	// this breaks the transition as it switches to the final duty of the last fade for half a second before fading
+	ledc_stop(LED_MODE, LED_CHANNEL, ledc_get_duty(LED_MODE, LED_CHANNEL));
+
+	// start the fade
+	int fade_duration = 1000;
+        ledc_set_fade_time_and_start(LED_MODE, LED_CHANNEL, duty, fade_duration, LEDC_FADE_NO_WAIT);
+}
+
+void led_set_state(enum led_state_t state)
+{
+	// get the target duty
+	uint32_t target_duty = 0;
+	switch (state)
+	{
+		case LED_STATE_ON:
+			target_duty = LED_DUTY_MAX;
+			break;
+		case LED_STATE_OFF:
+			target_duty = LED_DUTY_MIN;
+			break;
+	}
+
+	// fade to the new duty
+	led_fade_duty(target_duty);
+
+	// set the new state
+	led_state = state;
+}
+
+void mqtt_light_switch_handler(MessageData *data)
 {
 	// get the payload
 	char payload[data->message->payloadlen + 1];
 	mqtt_get_payload(data, payload);
 
-	// ...
-	ESP_LOGI(LOG_TAG, "[APP] Received payload for \"%.*s\": \"%s\"", data->topicName->lenstring.len, data->topicName->lenstring.data, payload);
+	// call the appropriate action for the given message
+	if (strcmp(payload, "ON") == 0)
+		// on
+		led_set_state(LED_STATE_ON);
+	else if (strcmp(payload, "OFF") == 0)
+		// off
+		led_set_state(LED_STATE_OFF);
+	else if (strcmp(payload, "TOGGLE") == 0)
+		// toggle
+		led_set_state(!led_state);
+}
+
+void mqtt_brightness_handler(MessageData *data)
+{
+	// get the payload
+	char payload[data->message->payloadlen + 1];
+	mqtt_get_payload(data, payload);
+
+	// get the given duty
+	int duty = atoi(payload);
+	if (duty < LED_DUTY_MIN)
+		duty = LED_DUTY_MIN;
+	else if (duty > LED_DUTY_MAX)
+		duty = LED_DUTY_MAX;
+
+	// fade to the new duty
+	led_fade_duty(duty);
 }
 
 void mqtt_subscribe(MQTTClient *client, const char *topic_name, messageHandler handler)
@@ -103,7 +181,8 @@ void mqtt_task()
 
 	// setup subscriptions
 	ESP_LOGI(LOG_TAG, "[APP] Setting up MQTT subscriptions...");
-	mqtt_subscribe(&client, MQTT_TOPIC("light"), mqtt_light_handler);
+	mqtt_subscribe(&client, MQTT_TOPIC("light/switch"), mqtt_light_switch_handler);
+	mqtt_subscribe(&client, MQTT_TOPIC("light/brightness/set"), mqtt_brightness_handler);
 
 	// run the yield loop
 	while(1)
@@ -191,4 +270,32 @@ void app_main()
 	// init wifi
 	struct wifi_state_t state;
 	wifi_init(&state);
+
+	// led
+	// setup the fade timer
+	ledc_timer_config_t timer_config =
+	{
+		.duty_resolution = LED_DUTY_RESOLUTION,
+		.freq_hz = 25000,
+		.speed_mode = LED_MODE,
+		.timer_num = LED_TIMER,
+	};
+
+	ledc_timer_config(&timer_config);
+
+	// setup the fade channel
+	ledc_channel_config_t channel_config =
+	{
+		.channel    = LED_CHANNEL,
+		.duty       = 0,
+		.gpio_num   = LED_GPIO,
+		.speed_mode = LED_MODE,
+		.hpoint     = 0,
+		.timer_sel  = LED_TIMER,
+	};
+
+	ledc_channel_config(&channel_config);
+
+	// install the configured fade function
+	ledc_fade_func_install(0);
 }
