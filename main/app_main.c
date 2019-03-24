@@ -13,16 +13,49 @@
 #define WIFI_CONNECTED_BIT BIT0
 
 // mqtt constants
-#define MQTT_HOST     "192.168.7.20"
-#define MQTT_PORT     1883
-#define MQTT_ID       "ESP32d8a01d4018b4"
-#define MQTT_USERNAME "USERNAME"
-#define MQTT_PASSWORD "PASSWORD"
+#define MQTT_HOST                 "192.168.7.20"
+#define MQTT_PORT                 1883
+#define MQTT_ID                   "ESP32d8a01d4018b4"
+#define MQTT_USERNAME             "USERNAME"
+#define MQTT_PASSWORD             "PASSWORD"
+#define MQTT_TOPIC(relative_name) MQTT_ID "/" relative_name
 
 struct wifi_state_t
 {
 	EventGroupHandle_t event_group;
 };
+
+// out should be of size data->message->payloadlen + 1
+void mqtt_get_payload(MessageData *data, char *out)
+{
+	// copy the payload string limited to its length with a null terminator
+	char payload[data->message->payloadlen + 1];
+	strncpy(payload, (char *)data->message->payload, data->message->payloadlen);
+	payload[data->message->payloadlen] = '\0';
+
+	// copy the payload to  the given output
+	strcpy(out, payload);
+}
+
+void mqtt_light_handler(MessageData *data)
+{
+	// get the payload
+	char payload[data->message->payloadlen + 1];
+	mqtt_get_payload(data, payload);
+
+	// ...
+	ESP_LOGI(LOG_TAG, "[APP] Received payload for \"%.*s\": \"%s\"", data->topicName->lenstring.len, data->topicName->lenstring.data, payload);
+}
+
+void mqtt_subscribe(MQTTClient *client, const char *topic_name, messageHandler handler)
+{
+	// create the subscription
+	int result = MQTTSubscribe(client, topic_name, QOS0, handler);
+	if (result != SUCCESS)
+		ESP_LOGE(LOG_TAG, "[APP] Error subscribing to \"%s\": %i", topic_name, result);
+	else
+		ESP_LOGI(LOG_TAG, "[APP] Subscribed to \"%s\"", topic_name);
+}
 
 void mqtt_task()
 {
@@ -66,14 +99,18 @@ void mqtt_task()
 	ESP_LOGI(LOG_TAG, "[APP] Connecting to MQTT host...");
 	result = MQTTConnect(&client, &data);
 	if (result != SUCCESS)
-		ESP_LOGE(LOG_TAG, "[APP] Error connecting: %d", result);
+		ESP_LOGE(LOG_TAG, "[APP] Error connecting: %i", result);
+
+	// setup subscriptions
+	ESP_LOGI(LOG_TAG, "[APP] Setting up MQTT subscriptions...");
+	mqtt_subscribe(&client, MQTT_TOPIC("light"), mqtt_light_handler);
 
 	// run the yield loop
 	while(1)
 	{
 		result = MQTTYield(&client, 1000);
 		if (result != SUCCESS)
-			ESP_LOGE(LOG_TAG, "[APP] Error yielding: %d", result);
+			ESP_LOGE(LOG_TAG, "[APP] Error yielding: %i", result);
 	}
 
 	// delete the task now that the program is finished
