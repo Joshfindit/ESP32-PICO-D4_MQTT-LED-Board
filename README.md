@@ -24,3 +24,24 @@
 - Respond to `ON`/`OFF`/`TOGGLE` and `brightness` commands
 - Integration with Homeassistant
 - *Bonus: on/off/brightness changes are smoothly faded. Currently at 300ms
+
+
+## Development on Ubuntu
+*In addition to the documentation on the ESP32, these were neccessary on Ubuntu server:*
+
+```bash
+cd ~/
+wget https://dl.espressif.com/dl/xtensa-esp32-elf-linux64-1.22.0-80-g6c4433a-5.2.0.tar.gz
+mkdir -p ~/esp
+cd ~/esp
+tar -xzf ~/xtensa-esp32-elf-linux64-1.22.0-80-g6c4433a-5.2.0.tar.gz
+git clone --recursive https://github.com/espressif/esp-idf.git
+cd ~/esp/esp-idf/
+git submodule add https://github.com/tuanpmt/espmqtt.git components/espmqtt
+sudo apt install python-pip
+export IDF_PATH=~/esp/esp-idf ## Note: has to be present in the environment for compiling and flashing
+python -m pip install --user -r $IDF_PATH/requirements.txt
+apt install libncurses5-dev flex bison gperf
+sudo usermod -a -G tty $(whoami) ## Possibly not needed
+sudo usermod -a -G dialout $(whoami)
+```
