@@ -1,3 +1,10 @@
 # ESP32-PICO-D4_MQTT-LED-Board
 
-Function: Create a portable board that powers 1-4 LEDS (From a single LED channel to RGBW)
+## Plan
+
+ Create a portable board that:
+
+- Powers 1-4 LEDS (From a single LED channel to RGBW)
+- Communicates via MQTT
+- Supports using a momentary pushbutton and rotary encored for on/off/brightness
+- Has a usb-chargable battery for portability
