@@ -21,5 +21,5 @@
 - Power a single LED
 - Use the HIGHPWM counters built in to the Pico D4 Mini (can go up to 300,000kHz at 10-bit (`0-1023`))
 - Subscribe to an MQTT topic
-- Respond to `ON`/`OFF`/'TOGGLE` and `brightness` commands
+- Respond to `ON`/`OFF`/`TOGGLE` and `brightness` commands
 - Integration with Homeassistant
