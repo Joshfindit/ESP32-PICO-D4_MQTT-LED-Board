@@ -23,3 +23,4 @@
 - Subscribe to an MQTT topic
 - Respond to `ON`/`OFF`/`TOGGLE` and `brightness` commands
 - Integration with Homeassistant
+- *Bonus: on/off/brightness changes are smoothly faded. Currently at 300ms
