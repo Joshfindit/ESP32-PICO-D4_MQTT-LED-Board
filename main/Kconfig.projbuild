@@ -12,4 +12,35 @@ config WIFI_PASSWORD
     help
         WiFi password (WPA or WPA2) for the example to use.
 
+config MQTT_ID
+    string "MQTT Client ID"
+    default ""
+    help
+        ID for the MQTT client to use when connecting to the server.
+        Defaults to "ESP32[mac address]" if blank.
+
+config MQTT_SERVER_IP
+    string "MQTT Server IP Address"
+    default "myipaddress"
+    help
+        MQTT server for the program to subscribe to.
+
+config MQTT_SERVER_PORT
+    int "MQTT Server Port"
+    default 1883
+    help
+        The port for the MQTT server IP address.
+
+config MQTT_USERNAME
+    string "MQTT Server Username"
+    default ""
+    help
+        The username for authenticating to the MQTT server.
+
+config MQTT_PASSWORD
+    string "MQTT Server Password"
+    default ""
+    help
+        The password for authenticating to the MQTT server.
+
 endmenu
