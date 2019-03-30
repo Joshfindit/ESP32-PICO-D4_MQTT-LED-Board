@@ -144,7 +144,7 @@ void mqtt_task()
 	// create the network
 	Network network;
 	NetworkInit(&network);
-	NetworkConnect(&network, MQTT_HOST, MQTT_PORT);
+	NetworkConnect(&network, CONFIG_MQTT_SERVER_IP, CONFIG_MQTT_SERVER_PORT);
 
 	// create the client
 	MQTTClient client;
@@ -170,8 +170,8 @@ void mqtt_task()
 	data.MQTTVersion       = 3;
 	data.keepAliveInterval = 0;
 	data.cleansession      = 1;
-	data.username.cstring  = MQTT_USERNAME;
-	data.password.cstring  = MQTT_PASSWORD;
+	data.username.cstring  = CONFIG_MQTT_USERNAME;
+	data.password.cstring  = CONFIG_MQTT_PASSWORD;
 
 	// connect to the host
 	ESP_LOGI(LOG_TAG, "[APP] Connecting to MQTT host...");
