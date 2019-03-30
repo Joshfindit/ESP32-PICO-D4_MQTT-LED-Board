@@ -1,4 +1,5 @@
 #include <string.h>
+#include <assert.h>
 #include <esp_log.h>
 #include <esp_wifi.h>
 #include <esp_event_loop.h>
@@ -15,12 +16,7 @@
 #define WIFI_CONNECTED_BIT BIT0
 
 // mqtt constants
-#define MQTT_HOST                 "192.168.7.20"
-#define MQTT_PORT                 (1883)
-#define MQTT_ID                   "ESP32d8a01d4018b4"
-#define MQTT_USERNAME             "USERNAME"
-#define MQTT_PASSWORD             "PASSWORD"
-#define MQTT_TOPIC(relative_name) MQTT_ID "/" relative_name
+#define MQTT_MAX_SUBSCRIPTIONS 8
 
 // led constants
 #define LED_DUTY_RESOLUTION LEDC_TIMER_10_BIT
@@ -41,6 +37,12 @@ enum led_state_t
 	LED_STATE_ON,
 	LED_STATE_OFF,
 };
+
+// pointers to the names of the current mqtt subscriptions
+// this is done as MQTTSubscribe needs the passed string to stay in scope during its entire lifetime
+// which it cant with the mqtt_subscribe function. so this array stores the mallocd names so they can be freed at the end of the program
+unsigned int num_subscription_names = 0;
+char *subscription_names[MQTT_MAX_SUBSCRIPTIONS];
 
 // the current led state for this program
 enum led_state_t led_state = LED_STATE_OFF;
@@ -125,14 +127,24 @@ void mqtt_brightness_handler(MessageData *data)
 	led_fade_duty(duty);
 }
 
-void mqtt_subscribe(MQTTClient *client, const char *topic_name, messageHandler handler)
+void mqtt_subscribe(MQTTClient *client, const char *client_id, const char *topic_name, messageHandler handler)
 {
+	// get the full topic
+	assert(num_subscription_names <= MQTT_MAX_SUBSCRIPTIONS);
+	char *topic = malloc((strlen(client_id) + strlen(topic_name) + 1) * sizeof(char));
+	subscription_names[num_subscription_names] = topic;
+	num_subscription_names++;
+
+	strcpy(topic, client_id);
+	strcat(topic, "/");
+	strcat(topic, topic_name);
+
 	// create the subscription
-	int result = MQTTSubscribe(client, topic_name, QOS0, handler);
+	int result = MQTTSubscribe(client, topic, QOS0, handler);
 	if (result != SUCCESS)
-		ESP_LOGE(LOG_TAG, "[APP] Error subscribing to \"%s\": %i", topic_name, result);
+		ESP_LOGE(LOG_TAG, "[APP] Error subscribing to \"%s\": %i", topic, result);
 	else
-		ESP_LOGI(LOG_TAG, "[APP] Subscribed to \"%s\"", topic_name);
+		ESP_LOGI(LOG_TAG, "[APP] Subscribed to \"%s\"", topic);
 }
 
 void mqtt_task()
@@ -159,13 +171,44 @@ void mqtt_task()
                        read_buffer,
                        sizeof(read_buffer));
 
-	// create the client id
-	MQTTString clientId = MQTTString_initializer;
-	clientId.cstring = MQTT_ID;
+	// get the client id string
+	char client_id_string[256];
+
+	// if the mqtt id is set, use that
+	if (strlen(CONFIG_MQTT_ID) > 0)
+	{
+		// set the client id
+		strcpy(client_id_string, CONFIG_MQTT_ID);
+	}
+	// mqtt id is not set, default to "ESP32[mac address]"
+	else
+	{
+		// get the mac address
+		uint8_t mac_address[6];
+		ESP_ERROR_CHECK(esp_read_mac(mac_address, ESP_MAC_WIFI_STA));
+
+		// convert the mac address to a string
+		char mac_address_string[13];
+		for (int i = 0; i < 6; i++)
+		{
+			char part[3];
+			sprintf(part, "%02x", mac_address[i]);
+			strncpy(&mac_address_string[i * 2], part, 2);
+		}
+		mac_address_string[12] = '\0';
+
+		// create the full client id
+		const char *client_id_prefix = "ESP32";
+		strcpy(client_id_string, client_id_prefix);
+		strcat(client_id_string, mac_address_string);
+	}
 
 	// create the connection data
+	MQTTString client_id = MQTTString_initializer;
+	client_id.cstring = client_id_string;
+
 	MQTTPacket_connectData data = MQTTPacket_connectData_initializer;
-	data.clientID          = clientId;
+	data.clientID          = client_id;
 	data.willFlag          = 0;
 	data.MQTTVersion       = 3;
 	data.keepAliveInterval = 0;
@@ -181,8 +224,8 @@ void mqtt_task()
 
 	// setup subscriptions
 	ESP_LOGI(LOG_TAG, "[APP] Setting up MQTT subscriptions...");
-	mqtt_subscribe(&client, MQTT_TOPIC("light/switch"), mqtt_light_switch_handler);
-	mqtt_subscribe(&client, MQTT_TOPIC("light/brightness/set"), mqtt_brightness_handler);
+	mqtt_subscribe(&client, client_id_string, "light/switch", mqtt_light_switch_handler);
+	mqtt_subscribe(&client, client_id_string, "light/brightness/set", mqtt_brightness_handler);
 
 	// run the yield loop
 	while(1)
@@ -298,4 +341,8 @@ void app_main()
 
 	// install the configured fade function
 	ledc_fade_func_install(0);
+
+	// free all the subscription names
+	for (int i = 0; i < num_subscription_names; i++)
+		free(subscription_names[i]);
 }
