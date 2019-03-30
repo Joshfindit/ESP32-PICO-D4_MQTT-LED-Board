@@ -67,7 +67,7 @@ void led_fade_duty(uint32_t duty)
 	ledc_stop(LED_MODE, LED_CHANNEL, ledc_get_duty(LED_MODE, LED_CHANNEL));
 
 	// start the fade
-	int fade_duration = 1000;
+	int fade_duration = 300;
 	ledc_set_fade_time_and_start(LED_MODE, LED_CHANNEL, duty, fade_duration, LEDC_FADE_NO_WAIT);
 }
 
