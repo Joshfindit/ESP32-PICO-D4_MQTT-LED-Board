@@ -3,3 +3,7 @@ build/
 
 # Nano SWP files
 *.swp
+
+# Generated config files
+sdkconfig
+sdkconfig.old
