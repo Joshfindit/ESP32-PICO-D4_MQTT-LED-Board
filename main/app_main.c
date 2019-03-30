@@ -25,7 +25,7 @@
 #define LED_MODE            LEDC_HIGH_SPEED_MODE
 #define LED_TIMER           LEDC_TIMER_0
 #define LED_CHANNEL         LEDC_CHANNEL_0
-#define LED_GPIO            (18)
+#define LED_GPIO            (19)
 
 struct wifi_state_t
 {
@@ -68,7 +68,7 @@ void led_fade_duty(uint32_t duty)
 
 	// start the fade
 	int fade_duration = 1000;
-        ledc_set_fade_time_and_start(LED_MODE, LED_CHANNEL, duty, fade_duration, LEDC_FADE_NO_WAIT);
+	ledc_set_fade_time_and_start(LED_MODE, LED_CHANNEL, duty, fade_duration, LEDC_FADE_NO_WAIT);
 }
 
 void led_set_state(enum led_state_t state)
@@ -319,7 +319,7 @@ void app_main()
 	ledc_timer_config_t timer_config =
 	{
 		.duty_resolution = LED_DUTY_RESOLUTION,
-		.freq_hz = 25000,
+		.freq_hz = 50000,
 		.speed_mode = LED_MODE,
 		.timer_num = LED_TIMER,
 	};
