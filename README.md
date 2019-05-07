@@ -27,6 +27,17 @@
 
 
 ## Development on Ubuntu
+
+* Install ESP-IDF.
+
+* Install Eclipse Paho for ESP32:
+```bash
+cd /path/to/esp/esp-idf/components
+git clone --recursive https://github.com/nkolban/esp32-snippets/tree/master/networking/mqtt/paho_mqtt_embedded_c
+mv esp32-snippets/networking/mqtt/paho_mqtt_embedded_c paho
+rm -r esp32-snippets
+```
+
 *In addition to the documentation on the ESP32, these were neccessary on Ubuntu server:*
 
 ```bash
@@ -37,7 +48,9 @@ cd ~/esp
 tar -xzf ~/xtensa-esp32-elf-linux64-1.22.0-80-g6c4433a-5.2.0.tar.gz
 git clone --recursive https://github.com/espressif/esp-idf.git
 cd ~/esp/esp-idf/
-git submodule add https://github.com/tuanpmt/espmqtt.git components/espmqtt
+git clone --recursive https://github.com/nkolban/esp32-snippets/tree/master/networking/mqtt/paho_mqtt_embedded_c
+mv esp32-snippets/networking/mqtt/paho_mqtt_embedded_c paho
+rm -r esp32-snippets
 sudo apt install python-pip
 export IDF_PATH=~/esp/esp-idf ## Note: has to be present in the environment for compiling and flashing
 python -m pip install --user -r $IDF_PATH/requirements.txt
