@@ -38,7 +38,7 @@ mv esp32-snippets/networking/mqtt/paho_mqtt_embedded_c paho
 rm -r esp32-snippets
 ```
 
-*In addition to the documentation on the ESP32, these were neccessary on Ubuntu server:*
+*In addition to the documentation on the ESP32, these steps were neccessary to set up Ubuntu server:*
 
 ```bash
 cd ~/
@@ -58,3 +58,11 @@ apt install libncurses5-dev flex bison gperf
 sudo usermod -a -G tty $(whoami) ## Possibly not needed
 sudo usermod -a -G dialout $(whoami)
 ```
+
+* Configure, compile and flash the board
+
+```bash
+make menuconfig # Pay special attention to the `MQTT_LED` section
+make flash
+```
+*Note: you can also `make monitor` for the debug readout from the USB-connected board*
