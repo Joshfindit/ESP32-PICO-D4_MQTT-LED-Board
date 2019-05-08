@@ -19,7 +19,8 @@
 ## Features already implemented
 
 - Power a single LED
-- Use the HIGHPWM counters built in to the Pico D4 Mini (can go up to 300,000kHz at 10-bit (`0-1023`))
+- Use the HIGHPWM counters built in to the Pico D4 Mini (can go up to 312500Hz at 8-bit (`0-255`), 78125Hz at 10-bit (`0-1023`), and so-on, according to this math: `80000000 / (2^BIT_DEPTH)`)
+  *Thanks @OttoWinter for clearing up ranges on https://github.com/esphome/feature-requests/issues/216*
 - Subscribe to an MQTT topic
 - Respond to `ON`/`OFF`/`TOGGLE` and `brightness` commands
 - Integration with Homeassistant
