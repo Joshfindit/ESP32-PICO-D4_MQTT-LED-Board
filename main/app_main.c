@@ -342,6 +342,8 @@ void app_main()
 	// install the configured fade function
 	ledc_fade_func_install(0);
 
+	led_set_state(LED_STATE_ON);
+
 	// free all the subscription names
 	for (int i = 0; i < num_subscription_names; i++)
 		free(subscription_names[i]);
